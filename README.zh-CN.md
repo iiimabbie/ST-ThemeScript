@@ -11,7 +11,7 @@
 ![i18n](https://img.shields.io/badge/i18n-繁中%20·%20简中%20·%20EN-2ea44f)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey)
 
-[功能](#功能) · [安装方法](#安装方法) · [使用方法](#使用方法)
+[功能](#功能) · [安装方法](#安装方法) · [使用方法](#使用方法) · [链接](#链接)
 
 </div>
 
@@ -47,3 +47,8 @@ export function cleanup() {
 }
 </script>
 ```
+
+## 链接
+
+- [Discord](https://discord.gg/P6kR5dpFVh)：提问与反馈问题
+- [Rainori Notion](https://classy-christmas-5c1.notion.site/Rainori-4188b3769594807babe7d3fd4074d118)：iiimabbie 的其他作品

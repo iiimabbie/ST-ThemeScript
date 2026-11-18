@@ -11,7 +11,7 @@
 ![i18n](https://img.shields.io/badge/i18n-繁中%20·%20简中%20·%20EN-2ea44f)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey)
 
-[Features](#features) · [Installation](#installation) · [Usage](#usage)
+[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Links](#links)
 
 </div>
 
@@ -47,3 +47,8 @@ export function cleanup() {
 }
 </script>
 ```
+
+## Links
+
+- [Discord](https://discord.gg/P6kR5dpFVh): questions and bug reports
+- [Rainori on Notion](https://classy-christmas-5c1.notion.site/Rainori-4188b3769594807babe7d3fd4074d118): other works by iiimabbie
