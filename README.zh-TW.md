@@ -20,6 +20,7 @@
 - 啟動或切換主題時，將自訂 CSS 中第一個 `<script>...</script>` 區塊作為 JavaScript 模組執行。
 - 自動執行未核准的程式碼之前會要求確認。JavaScript 可完整存取頁面；核准紀錄對應完全相同的腳本文字。
 - 替換或移除腳本之前，會呼叫選用的匯出函式 `cleanup()`；此函式可以是非同步的。
+- 可選擇提早執行（`data-run-at="early"`），或從網址載入腳本（`src="https://..."`）。
 
 ## 安裝方式
 
@@ -46,6 +47,21 @@ export function cleanup() {
     button.remove();
 }
 </script>
+```
+
+### 提早執行
+
+`<script data-run-at="early">` 會讓已核准的腳本在載入畫面期間就執行，靠腳本決定外觀的主題就不會閃一下。未核准的腳本不會提早執行，等載入完成後再要求確認。沒有此屬性時，維持載入完成後才執行。
+
+### 遠端腳本
+
+`<script src="https://...">` 從網址取得腳本，只接受 https，標籤內的程式碼會被忽略。核准的是抓回來的內容，不是網址：內容一變就會再次確認，確認框會顯示來源網址和完整程式碼。點選**套用 JS** 一律重新抓取，內容未核准時仍會要求確認。抓取失敗或超過 10 秒時，執行中的腳本會繼續執行。遠端腳本的核准以 SHA-256 記錄。
+
+抓回來的是 CSS 檔（網址以 `.css` 結尾或回應為 `text/css`）且含有 `<script>...</script>` 區塊時，只執行區塊內文，所以同一個檔案可以同時放 CSS 和 JS；其他檔案整份當 JS 執行。核准只計算 JS，只改 CSS 不會再次確認。檔案裡的 `<script>` 不可再有 `src`。CSS 用同一個網址以 `@import` 載入：
+
+```html
+@import url("https://example.github.io/my-theme/theme.css");
+<script src="https://example.github.io/my-theme/theme.css" data-run-at="early"></script>
 ```
 
 ## 連結

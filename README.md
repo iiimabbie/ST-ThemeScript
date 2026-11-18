@@ -20,6 +20,7 @@
 - Runs the first `<script>...</script>` block in Custom CSS as a JavaScript module on startup and theme changes.
 - Requests confirmation before automatically running code that has not been approved. JavaScript has full access to the page. Approvals are saved per exact script.
 - Calls an optional exported `cleanup()` function before replacing or removing a script; it may be async.
+- Optional early run (`data-run-at="early"`) and remote scripts (`src="https://..."`).
 
 ## Installation
 
@@ -46,6 +47,21 @@ export function cleanup() {
     button.remove();
 }
 </script>
+```
+
+### Early run
+
+`<script data-run-at="early">` runs an approved script while the loading screen is still showing, so themes that depend on the script for their look do not flash. A script that has not been approved does not run early and asks for confirmation once loading finishes. Without the attribute, the script runs after loading finishes as before.
+
+### Remote scripts
+
+`<script src="https://...">` fetches the script from a URL; only https is accepted, and code inside the tag is ignored. Approval covers the fetched content, not the URL: when the content changes, the confirmation shows the source URL and the full code again. **Apply JS** always fetches again and still asks for confirmation if the content has not been approved. If fetching fails or takes longer than 10 seconds, the running script keeps running. Remote approvals are stored as SHA-256 hashes.
+
+If the fetched file is CSS (a `.css` URL or a `text/css` response) and contains a `<script>...</script>` block, only that block's content runs, so one file can hold both the CSS and the JS. Any other file runs whole as JS. Only the JS counts for approval, so CSS changes do not ask again. The `<script>` inside the file cannot have its own `src`. Load the CSS with `@import` from the same URL:
+
+```html
+@import url("https://example.github.io/my-theme/theme.css");
+<script src="https://example.github.io/my-theme/theme.css" data-run-at="early"></script>
 ```
 
 ## Links
