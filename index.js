@@ -1,7 +1,7 @@
 import { saveSettingsDebounced } from '../../../../script.js';
 import { extension_settings } from '../../../extensions.js';
 import { eventSource, event_types } from '../../../events.js';
-import { t } from '../../../i18n.js';
+import { t, translate } from '../../../i18n.js';
 import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from '../../../popup.js';
 
 const settingsKey = 'ST-ThemeScript';
@@ -53,6 +53,55 @@ async function cleanup() {
     }
 }
 
+const HELP_ITEMS = [
+    '把 JS 用 `<script>...</script>` 包起來，放在客製 CSS 的最後面。`</script>` 後面不要再寫 CSS，緊接在後面的第一段會失效。',
+    '打字時只有 CSS 會即時生效，JS 要按「套用 JS」才會執行。按鈕有外框，代表有改動還沒套用。',
+    '切換主題或重新整理頁面時會自動執行。沒同意過的腳本會先跳確認框。',
+    '腳本可以寫 `export function cleanup()`，換腳本、換主題或刪掉腳本之前，會先呼叫它收拾。',
+    '用 `SillyTavern.getContext()` 存取酒館。要 import 其他模組，請寫完整的 https 網址。',
+    '沒裝這個擴充的人匯入主題時，CSS 照常生效，JS 不會執行。',
+];
+
+const HELP_EXAMPLE = `<script>
+const button = document.createElement('button');
+button.className = 'menu_button';
+button.textContent = 'Hello';
+document.body.append(button);
+
+export function cleanup() {
+    button.remove();
+}
+</script>`;
+
+// 反引號包住的片段顯示成 <code>。
+function withCode(text) {
+    return text.split('`').map((part, index) => {
+        if (index % 2 === 0) return document.createTextNode(part);
+        const code = document.createElement('code');
+        code.textContent = part;
+        return code;
+    });
+}
+
+function showHelp() {
+    const content = document.createElement('div');
+    content.className = 'theme-script-help';
+    const title = document.createElement('h3');
+    title.textContent = t`主題腳本使用說明`;
+    const list = document.createElement('ol');
+    for (const item of HELP_ITEMS) {
+        const li = document.createElement('li');
+        li.append(...withCode(translate(item)));
+        list.append(li);
+    }
+    const exampleTitle = document.createElement('p');
+    exampleTitle.textContent = t`範例：`;
+    const example = document.createElement('pre');
+    example.textContent = HELP_EXAMPLE;
+    content.append(title, list, exampleTitle, example);
+    callGenericPopup(content, POPUP_TYPE.TEXT, '', { wide: true, allowVerticalScrolling: true });
+}
+
 function initialize() {
     extension_settings[settingsKey] ??= {};
     extension_settings[settingsKey].approved ??= [];
@@ -66,7 +115,19 @@ function initialize() {
     const label = document.createElement('span');
     label.textContent = t`套用 JS`;
     button.append(icon, label);
-    document.getElementById('CustomCSS-textAreaBlock').insertAdjacentElement('afterend', button);
+    const helpButton = document.createElement('button');
+    helpButton.type = 'button';
+    helpButton.className = 'menu_button menu_button_icon';
+    const helpIcon = document.createElement('i');
+    helpIcon.className = 'fa-solid fa-circle-question';
+    const helpLabel = document.createElement('span');
+    helpLabel.textContent = t`套用 JS 說明`;
+    helpButton.append(helpIcon, helpLabel);
+    helpButton.addEventListener('click', showHelp);
+    const buttons = document.createElement('div');
+    buttons.className = 'theme-script-buttons';
+    buttons.append(helpButton, button);
+    document.getElementById('CustomCSS-textAreaBlock').insertAdjacentElement('afterend', buttons);
 
     function currentScript() {
         return extractScript(SillyTavern.getContext().powerUserSettings.custom_css);

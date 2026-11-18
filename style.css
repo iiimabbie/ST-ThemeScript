@@ -1,5 +1,11 @@
-#theme-script-apply {
-    align-self: center;
+.theme-script-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+}
+
+.theme-script-buttons .menu_button {
     white-space: nowrap;
 }
 
@@ -12,5 +18,14 @@
     max-height: 40vh;
     overflow: auto;
     text-align: left;
+    white-space: pre;
+}
+
+.theme-script-help {
+    text-align: left;
+}
+
+.theme-script-help pre {
+    overflow: auto;
     white-space: pre;
 }
