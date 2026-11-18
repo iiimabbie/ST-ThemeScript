@@ -3,5 +3,6 @@
     "沒有 JS，已停止原本的腳本": "No JS found; the previous script was stopped",
     "JS 已套用": "JS applied",
     "此主題包含 JavaScript (腳本)，執行後可以完整存取此頁面。是否允許執行？": "This theme contains JavaScript (a script) that will have full access to this page. Allow it to run?",
-    "若不確定危險性，請整段丟給 AI 判斷。範例例句: \"請幫我解析此段js，在sillytavern執行有無資料外洩風險。\"": "If you are unsure whether it is safe, paste the whole script to an AI. Example prompt: \"Please analyze this JS and tell me whether running it in SillyTavern could leak my data.\""
+    "若不確定危險性，請整段丟給 AI 判斷。範例例句：": "If you are unsure whether it is safe, paste the whole script to an AI. Example prompt: ",
+    "請幫我解析此段js，在sillytavern執行有無資料外洩風險。": "Please analyze this JS and tell me whether running it in SillyTavern could leak my data."
 }

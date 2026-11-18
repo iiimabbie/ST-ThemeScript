@@ -94,7 +94,9 @@ function initialize() {
                 const message = document.createElement('p');
                 message.textContent = t`此主題包含 JavaScript (腳本)，執行後可以完整存取此頁面。是否允許執行？`;
                 const hint = document.createElement('p');
-                hint.textContent = t`若不確定危險性，請整段丟給 AI 判斷。範例例句: "請幫我解析此段js，在sillytavern執行有無資料外洩風險。"`;
+                const example = document.createElement('code');
+                example.textContent = t`請幫我解析此段js，在sillytavern執行有無資料外洩風險。`;
+                hint.append(t`若不確定危險性，請整段丟給 AI 判斷。範例例句：`, example);
                 const preview = document.createElement('pre');
                 preview.className = 'theme-script-preview';
                 preview.textContent = code;
