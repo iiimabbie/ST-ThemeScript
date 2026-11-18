@@ -5,6 +5,7 @@ import { t } from '../../../i18n.js';
 import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from '../../../popup.js';
 
 const settingsKey = 'ST-ThemeScript';
+const AUTHOR_PORTFOLIO_URL = 'https://classy-christmas-5c1.notion.site/Rainori-4188b3769594807babe7d3fd4074d118';
 let activeModule = null;
 let activeScript = '';
 let requestId = 0;
@@ -56,6 +57,8 @@ async function cleanup() {
 function initialize() {
     extension_settings[settingsKey] ??= {};
     extension_settings[settingsKey].approved ??= [];
+    extension_settings[settingsKey].enabled ??= true;
+    const settings = extension_settings[settingsKey];
     const textarea = document.getElementById('customCSS');
     const button = document.createElement('button');
     button.type = 'button';
@@ -66,7 +69,13 @@ function initialize() {
     const label = document.createElement('span');
     label.textContent = t`套用 JS`;
     button.append(icon, label);
+    button.hidden = !settings.enabled;
     document.getElementById('CustomCSS-textAreaBlock').insertAdjacentElement('afterend', button);
+
+    // 停用時視為沒有腳本：自動執行會清掉目前的腳本，之後也不再執行。
+    function currentScript() {
+        return settings.enabled ? extractScript(SillyTavern.getContext().powerUserSettings.custom_css) : '';
+    }
 
     function updatePending() {
         button.classList.toggle('theme-script-pending', extractScript(textarea.value) !== activeScript);
@@ -88,11 +97,13 @@ function initialize() {
             if (!explicit && !extension_settings[settingsKey].approved.includes(hashScript(code))) {
                 const content = document.createElement('div');
                 const message = document.createElement('p');
-                message.textContent = t`此主題包含 JavaScript，執行後可以完整存取此頁面。是否允許執行？`;
+                message.textContent = t`此主題包含 JavaScript (腳本)，執行後可以完整存取此頁面。是否允許執行？`;
+                const hint = document.createElement('p');
+                hint.textContent = t`若不確定危險性，請整段丟給 AI 判斷。範例例句: "請幫我解析此段js，在sillytavern執行有無資料外洩風險。"`;
                 const preview = document.createElement('pre');
                 preview.className = 'theme-script-preview';
                 preview.textContent = code;
-                content.append(message, preview);
+                content.append(message, hint, preview);
                 const result = await callGenericPopup(content, POPUP_TYPE.CONFIRM, '', { wide: true });
                 if (id !== requestId || result !== POPUP_RESULT.AFFIRMATIVE) return;
                 approve(code);
@@ -126,12 +137,40 @@ function initialize() {
             inputRewrite = false;
             return;
         }
-        requestRun(extractScript(SillyTavern.getContext().powerUserSettings.custom_css));
+        requestRun(currentScript());
         updatePending();
     });
     observer.observe(document.getElementById('custom-style'), { childList: true, characterData: true, subtree: true });
-    requestRun(extractScript(SillyTavern.getContext().powerUserSettings.custom_css));
+    requestRun(currentScript());
     updatePending();
+
+    const drawer = document.createElement('div');
+    drawer.id = 'theme_script';
+    drawer.innerHTML = `<div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header"><b>${t`主題腳本`}</b><div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div></div>
+        <div class="inline-drawer-content">
+            <label class="checkbox_label" for="theme_script_enabled"><input id="theme_script_enabled" type="checkbox"><span>${t`啟用主題腳本`}</span></label>
+            <hr class="sysHR">
+            <div class="theme-script-links">
+                <a href="https://github.com/iiimabbie" target="_blank" rel="noopener" class="menu_button theme-script-link"><i class="fa-brands fa-github"></i> GitHub</a>
+                <a href="https://discord.gg/P6kR5dpFVh" target="_blank" rel="noopener" class="menu_button theme-script-link"><i class="fa-brands fa-discord"></i> Discord</a>
+            </div>
+            <div class="theme-script-version-info"></div>
+        </div>
+    </div>`;
+    const checkbox = drawer.querySelector('#theme_script_enabled');
+    checkbox.checked = settings.enabled;
+    checkbox.addEventListener('change', () => {
+        settings.enabled = checkbox.checked;
+        saveSettingsDebounced();
+        button.hidden = !settings.enabled;
+        requestRun(currentScript());
+        updatePending();
+    });
+    fetch(new URL('manifest.json', import.meta.url)).then(r => r.json()).then(m => {
+        drawer.querySelector('.theme-script-version-info').innerHTML = `v${m.version} © <a href="${AUTHOR_PORTFOLIO_URL}" target="_blank" rel="noopener">${m.author}</a>`;
+    });
+    document.getElementById('extensions_settings2').append(drawer);
 }
 
 eventSource.on(event_types.APP_READY, initialize);

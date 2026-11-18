@@ -14,3 +14,32 @@
     text-align: left;
     white-space: pre;
 }
+
+.theme-script-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.theme-script-link {
+    flex: 1;
+    min-width: 120px;
+    padding: 8px 12px;
+    text-decoration: none;
+}
+
+.theme-script-link i {
+    margin-right: 6px;
+}
+
+.theme-script-version-info {
+    margin-top: 6px;
+    text-align: right;
+    font-size: 0.7em;
+    color: #888;
+    opacity: 0.7;
+}
+
+.theme-script-version-info a {
+    color: inherit;
+}
