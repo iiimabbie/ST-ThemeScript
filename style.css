@@ -1,0 +1,16 @@
+#theme-script-apply {
+    align-self: flex-start;
+    white-space: nowrap;
+}
+
+#theme-script-apply.theme-script-pending {
+    outline: 2px solid var(--SmartThemeBodyColor, currentColor);
+    outline-offset: 2px;
+}
+
+.theme-script-preview {
+    max-height: 40vh;
+    overflow: auto;
+    text-align: left;
+    white-space: pre;
+}
