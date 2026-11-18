@@ -37,11 +37,12 @@ function scriptKey(script) {
 async function loadCode(script) {
     if (!script.src) return script.code;
     if (new URL(script.src, location.href).protocol !== 'https:') throw new Error(t`src 只接受 https 網址`);
-    const response = await fetch(script.src, { cache: 'no-cache' });
+    const response = await fetch(script.src, { cache: 'no-cache', signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    // 同一份檔案可兼作主題 CSS 的 @import：有 <script> 區塊時只執行區塊內文。
+    // CSS 檔可兼作主題的 @import：只執行其中 <script> 區塊的內文。其他檔案整份當 JS。
     const text = await response.text();
-    if (!scriptBlock.test(text)) return text;
+    const isCss = response.headers.get('Content-Type')?.includes('text/css') || new URL(script.src).pathname.endsWith('.css');
+    if (!isCss || !scriptBlock.test(text)) return text;
     const inner = extractScript(text);
     if (inner.src) throw new Error(t`遠端檔案的 <script> 不可再有 src`);
     return inner.code;
@@ -60,13 +61,63 @@ function hashScript(code) {
     return String(4294967296 * (2097151 & second) + (first >>> 0));
 }
 
-function isApproved(code) {
-    return extension_settings[settingsKey].approved.includes(hashScript(code));
+const SHA256_K = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+]);
+
+function rotr(value, bits) {
+    return (value >>> bits) | (value << (32 - bits));
 }
 
-function approve(code) {
-    if (isApproved(code)) return;
-    extension_settings[settingsKey].approved.push(hashScript(code));
+// crypto.subtle 只在 HTTPS 或 localhost 可用，用區網 http 開酒館時沒有，所以自己算。
+function sha256(text) {
+    const bytes = new TextEncoder().encode(text);
+    const padded = new Uint8Array(((bytes.length + 72) >> 6) << 6);
+    padded.set(bytes);
+    padded[bytes.length] = 0x80;
+    const view = new DataView(padded.buffer);
+    view.setUint32(padded.length - 8, Math.floor(bytes.length / 0x20000000));
+    view.setUint32(padded.length - 4, bytes.length * 8);
+    const hash = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+    const words = new Uint32Array(64);
+    for (let offset = 0; offset < padded.length; offset += 64) {
+        for (let i = 0; i < 16; i++) words[i] = view.getUint32(offset + i * 4);
+        for (let i = 16; i < 64; i++) {
+            const low = words[i - 15];
+            const high = words[i - 2];
+            words[i] = words[i - 16] + (rotr(low, 7) ^ rotr(low, 18) ^ (low >>> 3)) + words[i - 7] + (rotr(high, 17) ^ rotr(high, 19) ^ (high >>> 10));
+        }
+        let [a, b, c, d, e, f, g, h] = hash;
+        for (let i = 0; i < 64; i++) {
+            const t1 = (h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + SHA256_K[i] + words[i]) | 0;
+            const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+            [h, g, f, e, d, c, b, a] = [g, f, e, (d + t1) | 0, c, b, a, (t1 + t2) | 0];
+        }
+        [a, b, c, d, e, f, g, h].forEach((value, i) => { hash[i] += value; });
+    }
+    return Array.from(hash, value => value.toString(16).padStart(8, '0')).join('');
+}
+
+// 遠端內容由別人控制，可能被刻意做成相同的 hashScript，所以改用 SHA-256。
+// 內嵌腳本沿用 hashScript，既有核准才不會失效。
+function approvalHash(code, remote) {
+    return remote ? `sha256:${sha256(code)}` : hashScript(code);
+}
+
+function isApproved(code, remote) {
+    return extension_settings[settingsKey].approved.includes(approvalHash(code, remote));
+}
+
+function approve(code, remote) {
+    if (isApproved(code, remote)) return;
+    extension_settings[settingsKey].approved.push(approvalHash(code, remote));
     saveSettingsDebounced();
 }
 
@@ -118,6 +169,7 @@ async function confirmRun(code, src) {
 function requestRun(script, { explicit = false, early = false } = {}) {
     const id = ++requestId;
     const key = scriptKey(script);
+    const remote = Boolean(script.src);
     execution = execution.then(async () => {
         if (id !== requestId || (!explicit && key === activeKey)) return;
         let code;
@@ -128,7 +180,7 @@ function requestRun(script, { explicit = false, early = false } = {}) {
             if (explicit) toastr.error(t`無法載入遠端腳本：${error.message}`);
             return;
         }
-        if (id !== requestId || (early && code && !isApproved(code))) return;
+        if (id !== requestId || (early && code && !isApproved(code, remote))) return;
 
         await cleanup();
         updatePending();
@@ -139,11 +191,11 @@ function requestRun(script, { explicit = false, early = false } = {}) {
         }
 
         // 按鈕只核准內嵌腳本；遠端內容是抓回來才看到的，仍要確認。
-        if (!isApproved(code) && (script.src || !explicit)) {
+        if (!isApproved(code, remote) && (remote || !explicit)) {
             const allowed = await confirmRun(code, script.src);
             if (id !== requestId || !allowed) return;
         }
-        approve(code);
+        approve(code, remote);
 
         const url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
         try {
@@ -169,7 +221,7 @@ const HELP_ITEMS = [
     '打字時只有 CSS 會即時生效，JS 要按「套用 JS」才會執行。按鈕有外框，代表有改動還沒套用。',
     '切換主題或重新整理頁面時會自動執行。沒同意過的腳本會先跳確認框。',
     '寫成 `<script data-run-at="early">`，同意過的腳本會在載入畫面時就執行，適合決定外觀的主題。沒同意過的，等載入完成再確認。',
-    '寫成 `<script src="https://...">` 可以從網址載入腳本，只接受 https，標籤裡的程式碼會被忽略。檔案裡有 `<script>` 區塊時只執行區塊內的 JS，所以同一個檔案也能給 `@import` 載入 CSS。同意的是抓回來的 JS，JS 改了會重新確認；按「套用 JS」會重新抓取。',
+    '寫成 `<script src="https://...">` 可以從網址載入腳本，只接受 https，標籤裡的程式碼會被忽略。CSS 檔（`.css` 網址或 `text/css`）裡有 `<script>` 區塊時只執行區塊內的 JS，所以同一個檔案也能給 `@import` 載入 CSS。同意的是抓回來的 JS，JS 改了會重新確認；按「套用 JS」會重新抓取。',
     '腳本可以寫 `export function cleanup()`，換腳本、換主題或刪掉腳本之前，會先呼叫它收拾。',
     '用 `SillyTavern.getContext()` 存取酒館。要 import 其他模組，請寫完整的 https 網址。',
     '沒裝這個擴充的人匯入主題時，CSS 照常生效，JS 不會執行。',

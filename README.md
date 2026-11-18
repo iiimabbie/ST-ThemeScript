@@ -55,9 +55,9 @@ export function cleanup() {
 
 ### Remote scripts
 
-`<script src="https://...">` fetches the script from a URL; only https is accepted, and code inside the tag is ignored. Approval covers the fetched content, not the URL: when the content changes, the confirmation shows the source URL and the full code again. **Apply JS** always fetches again and still asks for confirmation if the content has not been approved. If fetching fails, the running script keeps running.
+`<script src="https://...">` fetches the script from a URL; only https is accepted, and code inside the tag is ignored. Approval covers the fetched content, not the URL: when the content changes, the confirmation shows the source URL and the full code again. **Apply JS** always fetches again and still asks for confirmation if the content has not been approved. If fetching fails or takes longer than 10 seconds, the running script keeps running. Remote approvals are stored as SHA-256 hashes.
 
-If the fetched file contains a `<script>...</script>` block, only that block's content runs, so one file can hold both the CSS and the JS. Only the JS counts for approval, so CSS changes do not ask again. The `<script>` inside the file cannot have its own `src`. Load the CSS with `@import` from the same URL:
+If the fetched file is CSS (a `.css` URL or a `text/css` response) and contains a `<script>...</script>` block, only that block's content runs; any other file runs whole as JS, so one file can hold both the CSS and the JS. Only the JS counts for approval, so CSS changes do not ask again. The `<script>` inside the file cannot have its own `src`. Load the CSS with `@import` from the same URL:
 
 ```html
 @import url("https://example.github.io/my-theme/theme.css");

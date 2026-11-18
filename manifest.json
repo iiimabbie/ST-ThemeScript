@@ -1,6 +1,7 @@
 {
     "display_name": "Theme Script",
     "version": "0.1.0",
+    "loading_order": 0,
     "js": "index.js",
     "css": "style.css",
     "author": "iiimabbie",
