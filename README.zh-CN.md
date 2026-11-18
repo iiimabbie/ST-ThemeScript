@@ -20,6 +20,7 @@
 - 启动或切换主题时，将自定义 CSS 中第一个 `<script>...</script>` 区块作为 JavaScript 模块运行。
 - 自动运行未批准的代码前会请求确认。JavaScript 可以完全访问页面；批准记录对应完全相同的脚本文本。
 - 替换或移除脚本前会调用可选的导出函数 `cleanup()`；此函数可以是异步的。
+- 可选择提前运行（`data-run-at="early"`），或从网址加载脚本（`src="https://..."`）。
 
 ## 安装方法
 
@@ -46,6 +47,21 @@ export function cleanup() {
     button.remove();
 }
 </script>
+```
+
+### 提前运行
+
+`<script data-run-at="early">` 会让已批准的脚本在加载画面期间就运行，靠脚本决定外观的主题就不会闪一下。未批准的脚本不会提前运行，等加载完成后再请求确认。没有此属性时，保持加载完成后才运行。
+
+### 远程脚本
+
+`<script src="https://...">` 从网址获取脚本，只接受 https，标签内的代码会被忽略。批准的是获取到的内容，而不是网址：内容一变就会再次确认，确认框会显示来源网址和完整代码。点击**应用 JS** 一律重新获取，内容未批准时仍会请求确认。获取失败时，正在运行的脚本会继续运行。
+
+获取到的文件若含有 `<script>...</script>` 区块，只运行区块内容，所以同一个文件可以同时放 CSS 和 JS。批准只计算 JS，只改 CSS 不会再次确认。文件里的 `<script>` 不可再有 `src`。CSS 用同一个网址以 `@import` 加载：
+
+```html
+@import url("https://example.github.io/my-theme/theme.css");
+<script src="https://example.github.io/my-theme/theme.css" data-run-at="early"></script>
 ```
 
 ## 链接
