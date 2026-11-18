@@ -11,7 +11,7 @@ let requestId = 0;
 let execution = Promise.resolve();
 
 function extractScript(css) {
-    const code = css.match(/<script>([\s\S]*?)<\/script>/i)?.[1] || '';
+    const code = css.match(/<script\b[^>]*>([\s\S]*?)<\/script>/i)?.[1] || '';
     return code.trim() ? code : '';
 }
 
@@ -79,7 +79,11 @@ function initialize() {
             if (id !== requestId || (!explicit && code === activeScript)) return;
             await cleanup();
             updatePending();
-            if (id !== requestId || !code) return;
+            if (id !== requestId) return;
+            if (!code) {
+                if (explicit) toastr.info(t`沒有 JS，已停止原本的腳本`);
+                return;
+            }
 
             if (!explicit && !extension_settings[settingsKey].approved.includes(hashScript(code))) {
                 const content = document.createElement('div');
@@ -99,6 +103,7 @@ function initialize() {
                 activeModule = await import(url);
                 activeScript = code;
                 if (id !== requestId) await cleanup();
+                else if (explicit) toastr.success(t`JS 已套用`);
             } catch (error) {
                 showError(error);
             } finally {
